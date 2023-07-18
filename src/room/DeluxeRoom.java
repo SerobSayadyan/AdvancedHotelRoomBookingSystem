@@ -2,7 +2,13 @@ package room;
 
 import room.roomItems.*;
 
-public class DeluxeRoom extends Room {
+import java.io.Serial;
+import java.io.Serializable;
+
+public class DeluxeRoom extends Room implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 12755065143223L;
 
     public static final double PRICE_PER_DAY = 55;
     private final Bathtub bathtub;

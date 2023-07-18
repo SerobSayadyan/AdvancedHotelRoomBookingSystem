@@ -1,6 +1,13 @@
 package room.roomItems;
 
-public class TV {
+import java.io.Serial;
+import java.io.Serializable;
+
+public class TV implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 12755065143227L;
+
     private final int totalChannels = 100;
     private int currentChannel;
 

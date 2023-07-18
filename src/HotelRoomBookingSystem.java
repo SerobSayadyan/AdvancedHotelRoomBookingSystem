@@ -2,27 +2,32 @@ import room.*;
 
 import java.io.*;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  * This class is for registering Hotel rooms and customers and booking customers to rooms.
- * <p>The booking information is also saved in <b>bookingInfo.txt</b> file for every individual customer:</p>
+ * <p>The booking information is saved for every individual customer</p>
  * <p>that helps us to save information even after program shut down</p>
  * @author Serob
  */
-public class HotelRoomBookingSystem {
+public class HotelRoomBookingSystem implements Serializable {
 
-    private File bookingInfo = new File("bookingInfo.txt");
+    @Serial
+    private static final long serialVersionUID = 557311153845756080L;
+
+    private final File bookingInfo = new File("bookingInfo.ser");
+    private final File registeredRoomsInfo = new File("registeredRoomsInfo.ser");
+    private final File registeredCustomersInfo = new File("registeredCustomersInfo.ser");
+    
     private List<Room> registeredRooms = new ArrayList<>();
     private List<Customer> registeredCustomers = new ArrayList<>();
     private List<Booking> bookings = new ArrayList<>();
 
     public HotelRoomBookingSystem() {
         //checks are there any registered Rooms, Customers and Bookings
-        checkFileForPreviousBookings();
+        assignSavedObjectsIfNecacery();
     }
+
 
     /**
      * This method is for booking every customer individually to certain room.
@@ -43,59 +48,29 @@ public class HotelRoomBookingSystem {
             return;
         }
 
-        if (!room.isAvailable()) {
-            System.out.println("\nThe room with ID: " + room.getRoomId() + " is not available\n");
-            return;
-        }
-
         if (isCustomerAlreadyBooked(customer)) {
             System.out.println("\nThe customer " + customer.getName() + " is already booked\n");
             return;
         }
 
-        Booking booking = new Booking(room, customer, startDate, endDate);
-        bookings.add(booking);
-        room.occupied();
+        if (room.isAvailable(startDate, endDate)) {
+            Booking booking = new Booking(room, customer, startDate, endDate);
+            bookings.add(booking);
+            room.occupy(startDate, endDate);
 
-
-
-
-        double pricePerDay = 0;
-        if (room instanceof SingleRoom) {
-            pricePerDay = SingleRoom.PRICE_PER_DAY;
-        } else if (room instanceof DoubleRoom) {
-            pricePerDay = DoubleRoom.PRICE_PER_DAY;
-        } else if (room instanceof DeluxeRoom) {
-            pricePerDay = DeluxeRoom.PRICE_PER_DAY;
-        } else {
-            System.out.println("There is something wrong with rooms");
+            generateReport(room, customer, startDate, endDate);
+            saveBookingInfo();
         }
-        double totalAmount = calculateTotalAmount(pricePerDay, startDate, endDate);
-        double taxes = calculateTaxes(totalAmount);
-        double serviceFee = calculateServiceFee(totalAmount);
-        double finalAmount = totalAmount + taxes + serviceFee;
 
-        System.out.println("\nBooking successful! Here is your bill:");
-        System.out.println("Room ID: " + room.getRoomId());
-        System.out.println("Room Type: " + room.getRoomType());
-        System.out.println("Customer Name: " + customer.getName());
-        System.out.println("Customer Email: " + customer.getEmail());
-        System.out.println("Booking Period: " + startDate + " to " + endDate);
-        System.out.println("Price per day: $" + pricePerDay);
-        System.out.println("Total Amount: $" + totalAmount);
-        System.out.println("Taxes (20%): $" + taxes);
-        System.out.println("Service Fee (10%): $" + serviceFee);
-        System.out.println("Final Amount: $" + finalAmount + '\n');
-
-        generateRoomReport(booking);
-        addToFile(room, customer, startDate, endDate, finalAmount);
     }
+
 
     /**
      * Registering a customer
      */
     public void registerCustomer(Customer customer) {
         registeredCustomers.add(customer);
+        saveRegisteredCustomers();
     }
 
     /**
@@ -103,6 +78,7 @@ public class HotelRoomBookingSystem {
      */
     public void registerSingleRoom() {
         registeredRooms.add(new SingleRoom());
+        saveRegisteredRooms();
     }
 
     /**
@@ -110,6 +86,7 @@ public class HotelRoomBookingSystem {
      */
     public void registerDoubleRoom() {
         registeredRooms.add(new DoubleRoom());
+        saveRegisteredRooms();
     }
 
     /**
@@ -117,6 +94,7 @@ public class HotelRoomBookingSystem {
      */
     public void registerDeluxeRoom() {
         registeredRooms.add(new DeluxeRoom());
+        saveRegisteredRooms();
     }
 
     public List<Customer> getRegisteredCustomers() {
@@ -129,6 +107,76 @@ public class HotelRoomBookingSystem {
 
     public List<Booking> getBookings() {
         return bookings;
+    }
+
+    private double detectRoomPricePerDay(Room room) {
+        if (room instanceof SingleRoom) {
+            return SingleRoom.PRICE_PER_DAY;
+        } else if (room instanceof DoubleRoom) {
+            return DoubleRoom.PRICE_PER_DAY;
+        } else if (room instanceof DeluxeRoom) {
+            return DeluxeRoom.PRICE_PER_DAY;
+        } else {
+            System.out.println("There is something wrong with rooms");
+            return 0;
+        }
+    }
+
+    private void generateReport(Room room, Customer customer, LocalDate startDate, LocalDate endDate) {
+
+        double pricePerDay = detectRoomPricePerDay(room);
+
+        double totalAmount = calculateTotalAmount(pricePerDay, startDate, endDate);
+        double taxes = calculateTaxes(totalAmount);
+        double serviceFee = calculateServiceFee(totalAmount);
+        double finalAmount = totalAmount + taxes + serviceFee;
+
+        String sb = "\nBooking successful! Here is your bill:\n" +
+                "Room ID: " + room.getRoomId() + "\n" +
+                "Room Type: " + room.getRoomType() + "\n" +
+                "Customer Name: " + customer.getName() + "\n" +
+                "Customer Email: " + customer.getEmail() + "\n" +
+                "Booking Period: " + startDate + " to " + endDate + "\n" +
+                "Price per day: $" + pricePerDay + "\n" +
+                "Total Amount: $" + totalAmount + "\n" +
+                "Taxes (20%): $" + taxes + "\n" +
+                "Service Fee (10%): $" + serviceFee + "\n" +
+                "Final Amount: $" + finalAmount + "\n";
+
+        System.out.println(sb);
+
+        addToFile(room, customer, startDate, endDate, finalAmount);
+    }
+
+    public void saveTheStateOfSystem(String path) {
+        File file = new File(path);
+        try (var oos = new ObjectOutputStream(new FileOutputStream(file))) {
+            oos.writeObject(this);
+            oos.flush();
+        } catch (IOException e) {
+            System.out.println("\nFile not found!\n");
+        }
+    }
+
+    public void loadTheStateOfSystem(String path) {
+        File file = new File(path);
+        try (var oos = new ObjectInputStream(new FileInputStream(file))) {
+            var hotelSystem = (HotelRoomBookingSystem) oos.readObject();
+            this.registeredRooms = hotelSystem.registeredRooms;
+            this.registeredCustomers = hotelSystem.registeredCustomers;
+            this.bookings = hotelSystem.bookings;
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("\nFile not found or is not correct\n");
+        }
+    }
+
+    public void showRegisteredRoomsAndRoomIDs() {
+        System.out.print("Room IDs - ");
+        for (Room room : registeredRooms) {
+            System.out.print("[" + room.getRoomId() + "] ");
+        }
+        System.out.println();
+
     }
 
     private Room findRoomById(int id) {
@@ -185,89 +233,52 @@ public class HotelRoomBookingSystem {
         }
     }
 
-    private void checkFileForPreviousBookings() {
-        try (var scanner = new Scanner(new FileReader(bookingInfo))) {
-            List<String> strings = new ArrayList<>();
-            while (scanner.hasNextLine()) {
-                strings.add(scanner.nextLine());
-            }
-            for (String str : strings) {
-                String[] arr = str.split(":");
-                setAllBookingsFromFile(arr);
-            }
-        } catch (IOException e) {
-            System.out.println("\n" + e.getMessage() + "\n");
-        }
-    }
+    private void assignSavedObjectsIfNecacery() {
+        //bookings
+        try (var os = new ObjectInputStream(new FileInputStream(bookingInfo))) {
+            bookings = (ArrayList<Booking>) os.readObject();
+        } catch (IOException | ClassNotFoundException e) {}
 
-    private void setAllBookingsFromFile(String[] arr) {
+        //customers
+        try (var os = new ObjectInputStream(new FileInputStream(registeredCustomersInfo))) {
+            registeredCustomers = (ArrayList<Customer>) os.readObject();
+        } catch (IOException | ClassNotFoundException e) {}
 
-        final int idIndex = 1;
-        final int roomTypeIndex = 3;
-        final int customerNameIndex = 5;
-        final int customerEmailIndex = 7;
-        final int customerIdIndex = 9;
-        final int startFromIndex = 11;
-        final int endingIndex = 13;
-
-        if (arr[0].equals("")) {
-            return;
-        }
-
-        int id = Integer.parseInt(arr[idIndex]);
-        String name = arr[customerNameIndex];
-        String email = arr[customerEmailIndex];
-        int customerId = Integer.parseInt(arr[customerIdIndex]);
-        LocalDate start = LocalDate.parse(arr[startFromIndex]);
-        LocalDate end = LocalDate.parse(arr[endingIndex]);
-
-        switch (arr[roomTypeIndex]) {
-            case "Single room" -> {
-                SingleRoom singleRoom = new SingleRoom();
-                singleRoom.setRoomId(id);
-                registeredRooms.add(singleRoom);
-
-                Customer customer = new Customer(name, email);
-                customer.setCustomerId(customerId);
-                registeredCustomers.add(customer);
-
-                bookings.add(new Booking(singleRoom, customer, start, end));
-                singleRoom.occupied();
-            }
-            case "Double room" -> {
-                DoubleRoom doubleRoom = new DoubleRoom();
-                doubleRoom.setRoomId(id);
-                registeredRooms.add(doubleRoom);
-
-                Customer customer = new Customer(name, email);
-                customer.setCustomerId(customerId);
-                registeredCustomers.add(customer);
-
-                bookings.add(new Booking(doubleRoom, customer, start, end));
-                doubleRoom.occupied();
-            }
-            case "Deluxe room" -> {
-                DeluxeRoom deluxeRoom = new DeluxeRoom();
-                deluxeRoom.setRoomId(id);
-                registeredRooms.add(deluxeRoom);
-
-                Customer customer = new Customer(name, email);
-                customer.setCustomerId(customerId);
-                registeredCustomers.add(customer);
-
-                bookings.add(new Booking(deluxeRoom, customer, start, end));
-                deluxeRoom.occupied();
-            }
-        }
+        //rooms
+        try (var os = new ObjectInputStream(new FileInputStream(registeredRoomsInfo))) {
+            registeredRooms = (ArrayList<Room>) os.readObject();
+        } catch (IOException | ClassNotFoundException e) {}
 
     }
 
-    private void generateRoomReport(Booking booking) {
-        try (var bw = new BufferedWriter(new FileWriter(booking.getBookingHistoryFile(), true))) {
-            bw.write("Customer :" + booking.getCustomer().getName() +
-                    ": stayed from :" + booking.getStartDate() + " to " + booking.getEndDate() + '\n');
-        } catch (IOException e) {
-            System.out.println(e);
-        }
+    private void serializeAndSaveObjects() {
+        saveBookingInfo();
+        saveRegisteredCustomers();
+        saveRegisteredRooms();
+    }
+
+    private void saveBookingInfo() {
+        //Bookings
+        try (var oos = new ObjectOutputStream(new FileOutputStream(bookingInfo))) {
+            oos.writeObject(bookings);
+            oos.flush();
+        } catch (IOException e) {}
+    }
+
+    private void saveRegisteredCustomers() {
+        //Customers
+        try (var oos = new ObjectOutputStream(new FileOutputStream(registeredCustomersInfo))) {
+            oos.writeObject(registeredCustomers);
+            oos.flush();
+        } catch (IOException e) {}
+    }
+
+    private void saveRegisteredRooms() {
+        //Rooms
+        try (var oos = new ObjectOutputStream(new FileOutputStream(registeredRoomsInfo))) {
+            oos.writeObject(registeredRooms);
+            oos.flush();
+        } catch (IOException e) {}
     }
 }
+

@@ -1,18 +1,22 @@
 import room.Room;
 
 import java.io.File;
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.LocalDate;
 
 /**
  * This class contains information about booked room and customer accordingly, also the period of booking
  */
-public class Booking {
+public class Booking implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1275506514323L;
 
     private File bookingHistoryFile;
     private Room room;
     private Customer customer;
     private LocalDate startDate;
-
     private LocalDate endDate;
 
     public Booking(Room room, Customer customer, LocalDate startDate, LocalDate endDate) {

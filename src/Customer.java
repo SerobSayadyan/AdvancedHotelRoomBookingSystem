@@ -1,7 +1,13 @@
+import java.io.Serial;
+import java.io.Serializable;
+
 /**
  * This class containing information about customers (i.e ID, Name, Email);
  */
-public class Customer {
+public class Customer implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1275506514321L;
 
     private static int idGeneration = 0;
     private int customerId;

@@ -1,2 +1,0 @@
-Customer :customer4: stayed from :2023-04-04 to 2023-04-10
-Customer :customer4: stayed from :2023-04-04 to 2023-04-10

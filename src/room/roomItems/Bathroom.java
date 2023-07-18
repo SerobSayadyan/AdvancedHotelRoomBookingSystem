@@ -1,12 +1,13 @@
 package room.roomItems;
 
-public class Bathroom {
-    private boolean isShowerOn = false;
-    private final Toilet toilet = new Toilet();
+import java.io.Serial;
+import java.io.Serializable;
 
-    public Toilet useToilet() {
-        return toilet;
-    }
+public class Bathroom implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 12755065143221L;
+
+    private boolean isShowerOn = false;
 
     public void showerOn() {
         isShowerOn = true;
@@ -15,7 +16,4 @@ public class Bathroom {
         isShowerOn = false;
     }
 
-    static class Toilet {
-
-    }
 }

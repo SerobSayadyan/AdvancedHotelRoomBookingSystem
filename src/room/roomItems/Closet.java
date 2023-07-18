@@ -1,6 +1,12 @@
 package room.roomItems;
 
-public class Closet {
+import java.io.Serial;
+import java.io.Serializable;
+
+public class Closet implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 12755065143224L;
 
     private final int capacityOfCloset = 30;
     private int totalAmountOfClothes;

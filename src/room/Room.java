@@ -2,13 +2,20 @@ package room;
 
 import room.roomItems.*;
 
-import java.io.File;
+import java.io.Serial;
+import java.io.Serializable;
+import java.time.LocalDate;
+import java.time.Period;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class contains information about room
  * <p>-room type, room ID, bed type</p>
  */
-public abstract class Room {
+public abstract class Room implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1275506514322L;
 
     private boolean isAvailable = true;
 
@@ -18,10 +25,10 @@ public abstract class Room {
     private final String roomType;
     public final BedType BED_TYPE;
     private final Bathroom bathroom;
-
     private final TV tv;
-
     private final Closet closet;
+    private final List<Period> reservedPeriods;
+
     public Room(BedType bedType, String roomType) {
         bathroom = new Bathroom();
         tv = new TV();
@@ -29,15 +36,24 @@ public abstract class Room {
         roomId = idGeneration++;
         BED_TYPE = bedType;
         this.roomType = roomType;
+        reservedPeriods = new ArrayList<>();
     }
+
     /**
      * changes the available room to occupied
      */
-    public void occupied() {
-        isAvailable = false;
+    public void occupy(LocalDate startDate, LocalDate endDate) {
+        reservedPeriods.add(Period.between(startDate, endDate));
     }
 
-    public boolean isAvailable() {
+    public boolean isAvailable(LocalDate startDate, LocalDate endDate) {
+        for (Period period : reservedPeriods) {
+            if (period.equals(Period.between(startDate, endDate))) {
+                System.out.println("The room is not available form '" + startDate + "' to '" + endDate + "'");
+                isAvailable = false;
+                return false;
+            }
+        }
         return isAvailable;
     }
 
